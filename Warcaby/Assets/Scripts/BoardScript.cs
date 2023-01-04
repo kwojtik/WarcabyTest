@@ -10,7 +10,7 @@ public class BoardScript : MonoBehaviour
     private Vector3 boardOffset = new Vector3(-4.0f, 0, -4.0f);
     private Vector3 pieceOffset = new Vector3(0.5f, 0, 0.5f);
 
-    public bool isUsWhite;
+    private bool isUsWhite;
     private bool isWhiteTurn;
     private bool hasKilled;
 
@@ -33,7 +33,7 @@ public class BoardScript : MonoBehaviour
         UpdateMouseOver();
 
 
-        //if it is my turn
+        if((isWhiteTurn)?isWhiteTurn:!isWhiteTurn)
         {
             int x = (int)mouseOver.x;
             int y = (int)mouseOver.y;
@@ -90,7 +90,7 @@ public class BoardScript : MonoBehaviour
 
         Piece p = pieces[x, y];
 
-        if(p != null && p.isWhite == isUsWhite)
+        if(p != null && p.isWhite == isWhiteTurn)
         {
             if(forcedPieces.Count == 0)
             {
@@ -184,8 +184,30 @@ public class BoardScript : MonoBehaviour
     }
     private void EndTurn()
     {
-        selectedPiece = null;
+        int x = (int)endDrag.x;
+        int y = (int)endDrag.y;
+
+        // promotion
+        if(selectedPiece != null)
+        {
+            if(selectedPiece.isWhite && !selectedPiece.isQueen && y == 7)
+            {
+                selectedPiece.isQueen = true;
+                selectedPiece.transform.Rotate(Vector3.right * 180);
+            }
+            else if (!selectedPiece.isWhite && !selectedPiece.isQueen && y == 0)
+            {
+                selectedPiece.isQueen = true;
+                selectedPiece.transform.Rotate(Vector3.right * 180);
+            }
+        }
+
+        selectedPiece = null;        
         startDrag = Vector2.zero;
+
+        //
+        if (ScanForPossibleMove(selectedPiece, x, y).Count != 0 && hasKilled)
+            return;
 
         isWhiteTurn = !isWhiteTurn;
         hasKilled = false;
@@ -193,7 +215,37 @@ public class BoardScript : MonoBehaviour
     }
     private void checkVictory()
     {
+        var ps = FindObjectsOfType<Piece>();
+        bool hasWhite = false, hasBlack = false;
 
+        for(int i = 0; i < ps.Length; i++)
+        {
+            if (ps[i].isWhite)
+                hasWhite = true;
+            else
+                hasBlack = true;
+        }
+
+        if (!hasWhite)
+            Victory(false);
+        if (!hasBlack)
+            Victory(true);
+    }
+    private void Victory(bool isWhite)
+    {
+        if (isWhite)
+            Debug.Log("White won");
+        else
+            Debug.Log("Black won");
+    }
+    private List<Piece> ScanForPossibleMove(Piece p, int x, int y)
+    {
+        forcedPieces = new List<Piece>();
+
+        if (pieces[x, y].isForcedToMove(pieces, x, y))
+            forcedPieces.Add(pieces[x, y]);
+
+        return forcedPieces;
     }
     private List<Piece> ScanForPossibleMove()
     {
