@@ -7,6 +7,64 @@ public class Piece : MonoBehaviour
     public bool isWhite;
     public bool isQueen;
 
+    public bool isForcedToMove(Piece[,] board, int x, int y)
+    {
+        if(isWhite || isQueen)
+        {
+            // top left
+            if(x>=2 && y <= 5)
+            {
+                Piece p = board[x - 1, y + 1];
+                // checking if there is an opposite color piece behind
+                if(p != null && p.isWhite != isWhite)
+                {
+                    if (board[x - 2, y + 2] == null)
+                        return true;
+                }
+            }
+
+            // top right
+            if (x <= 5 && y <= 5)
+            {
+                Piece p = board[x + 1, y + 1];
+                // checking if there is an opposite color piece behind
+                if (p != null && p.isWhite != isWhite)
+                {
+                    if (board[x + 2, y + 2] == null)
+                        return true;
+                }
+            }
+        }
+
+        if(!isWhite || isQueen)
+        {
+            // bottom left
+            if (x >= 2 && y >= 2)
+            {
+                Piece p = board[x - 1, y - 1];
+                // checking if there is an opposite color piece behind
+                if (p != null && p.isWhite != isWhite)
+                {
+                    if (board[x - 2, y - 2] == null)
+                        return true;
+                }
+            }
+
+            // bottom right
+            if (x <= 5 && y >= 2)
+            {
+                Piece p = board[x + 1, y - 1];
+                // checking if there is an opposite color piece behind
+                if (p != null && p.isWhite != isWhite)
+                {
+                    if (board[x + 2, y - 2] == null)
+                        return true;
+                }
+            }
+        }
+
+        return false;
+    }
     public bool ValidMove(Piece[,] board, int x1, int y1, int x2, int y2)
     {
         if (board[x2, y2] != null)

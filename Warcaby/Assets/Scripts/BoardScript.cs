@@ -10,10 +10,12 @@ public class BoardScript : MonoBehaviour
     private Vector3 boardOffset = new Vector3(-4.0f, 0, -4.0f);
     private Vector3 pieceOffset = new Vector3(0.5f, 0, 0.5f);
 
-    private bool isUsWhite;
+    public bool isUsWhite;
     private bool isWhiteTurn;
+    private bool hasKilled;
 
     private Piece selectedPiece;
+    private List<Piece> forcedPieces;
 
     private Vector2 mouseOver;
     private Vector2 startDrag;
@@ -23,6 +25,7 @@ public class BoardScript : MonoBehaviour
     {
         GenerateBoard();
         isWhiteTurn = true;
+        forcedPieces = new List<Piece>();
     }
 
     private void Update()
@@ -45,7 +48,6 @@ public class BoardScript : MonoBehaviour
                 TryMove((int)startDrag.x, (int)startDrag.y, x, y);
         }
     }
-
     private void UpdateMouseOver()
     {
         if(!Camera.main)
@@ -67,7 +69,6 @@ public class BoardScript : MonoBehaviour
         }
 
     }
-
     private void UpdatePieceDrag(Piece p)
     {
         if (!Camera.main)
@@ -85,26 +86,38 @@ public class BoardScript : MonoBehaviour
 
     private void SelectPiece(int x, int y)
     {
-        if (x < 0 || x >= pieces.Length || y < 0 || y >= pieces.Length) return;
+        if (x < 0 || x >= 8 || y < 0 || y >= 8) return;
 
         Piece p = pieces[x, y];
 
-        if(p != null)
+        if(p != null && p.isWhite == isUsWhite)
         {
-            selectedPiece = p;
-            startDrag = mouseOver;
+            if(forcedPieces.Count == 0)
+            {
+                selectedPiece = p;
+                startDrag = mouseOver;
+            }
+            else
+            {
+                if (forcedPieces.Find(fp => fp == p) == null)
+                    return;
+
+                selectedPiece = p;
+                startDrag = mouseOver;
+            }
+            
         }
     }
-
     private void TryMove(int x1, int y1, int x2, int y2)
     {
+        forcedPieces = ScanForPossibleMove();
         // Multiplayer support
         startDrag = new Vector2(x1, y1);
         endDrag = new Vector2(x2, y2);
         selectedPiece = pieces[x1, y1];
 
         // Is the move out of bounds?
-        if(x2 < 0 || x2 >= pieces.Length || y2 < 0 || y2 >= pieces.Length)
+        if(x2 < 0 || x2 > 8 || y2 < 0 || y2 > 8)
         {
             if (selectedPiece != null)
                 MovePiece(selectedPiece, x1, y1);
@@ -138,30 +151,61 @@ public class BoardScript : MonoBehaviour
                     if(p != null)
                     { 
                         pieces[(x1 + x2) / 2, (y1 + y2) / 2] = null;
-                        Destroy(p);
+                        Destroy(p.gameObject);
+                        hasKilled = true;
                     }
                 }
+
+                // were we suposed to kill anything?
+                if(forcedPieces.Count != 0 && !hasKilled)
+                {
+                    MovePiece(selectedPiece, x1, y1);
+                    startDrag = Vector2.zero;
+                    selectedPiece = null;
+
+                    return;
+                }
+
                 pieces[x2, y2] = selectedPiece;
                 pieces[x1, y1] = null;
                 MovePiece(selectedPiece, x2, y2);
 
                 EndTurn();
             }
+            else
+            {
+                MovePiece(selectedPiece, x1, y1);
+                startDrag = Vector2.zero;
+                selectedPiece = null;
+
+                return;
+            }
         }
     }
-
     private void EndTurn()
     {
         selectedPiece = null;
         startDrag = Vector2.zero;
 
         isWhiteTurn = !isWhiteTurn;
+        hasKilled = false;
         checkVictory();
     }
-
     private void checkVictory()
     {
 
+    }
+    private List<Piece> ScanForPossibleMove()
+    {
+        forcedPieces = new List<Piece>();
+
+        // check pieces
+        for (int i = 0; i < 8; i++)
+            for (int j = 0; j < 8; j++)
+                if (pieces[i, j] != null && pieces[i, j].isWhite == isWhiteTurn)
+                    if (pieces[i, j].isForcedToMove(pieces, i, j))
+                        forcedPieces.Add(pieces[i, j]);
+        return forcedPieces;
     }
 
     private void GenerateBoard()
@@ -188,7 +232,6 @@ public class BoardScript : MonoBehaviour
             }
         }
     }
-
     private void GeneratePiece(int x, int y)
     {
         bool isWhite = (y > 3) ? false : true;
@@ -200,7 +243,6 @@ public class BoardScript : MonoBehaviour
         pieces[x, y] = p;
         MovePiece(p, x, y);
     }
-
     private void MovePiece(Piece p, int x, int y)
     {
         p.transform.position = Vector3.right * x + Vector3.forward * y + boardOffset + pieceOffset;
