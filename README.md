@@ -1,3 +1,3 @@
 # WarcabyTest
 
-Project for university, kill me
+Project for university D:
